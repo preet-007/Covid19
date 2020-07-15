@@ -1,0 +1,58 @@
+def delay_cases(cases, pr_mean_median=10, pr_sigma= 0.2, prior_median_width=0.3, inp_len =None, out_len=None, diff_len=None):
+    
+    model = modelcontext(model)
+    delay = pm.Normal(mu = np.log(prior_mean-median),
+                     sigma = pr_sigma,
+                     )
+    if out_len is None:
+        out_len = model.sim_len
+    if diff_len is None:
+        diff_len = model.diff_data_sim
+    if len_input_arr is None:
+        input_len = model.sim_len
+        
+    pm.Deterministic("Delay", np.exp(delay))
+    width = np.log(prior_median_width)
+    delay_case = delay_lognormal(cases, input_len, output_len, tt.exp(delay), tt.exp(width),diff_len)
+    pm.Deterministic('Delay_cases',delay_case)
+    return delay_case
+  
+def delay_lognormal(cases, input_len, output_len, delay, width ,diff_len):
+    delay_mat = delay_matrix(input_len, output_len, diff_len)
+    delay_mat = delay_mat[:, :, None]
+    delayed_arr = arr_delay(cases, delay, width, delay_mat)
+    return delayed_arr
+   
+   
+def delay_matrix(len1, len2, diff):
+    size = max(len1,len2)
+    for i in range(size):
+        diagonal = np.ones(size - i) * (diff + i)
+        mat += np.diag(diagonal, i)
+    for i in range(1, size):
+        diagonal = np.ones(size - i) * (diff - i)
+        mat += np.diag(diagonal, -i)
+    return mat[:len1, :len2]
+    
+    
+def arr_delay(cases, delay, width, delay_mat):
+    mat = tt_lognormal(delay_mat, mu= np.log(delay),sigma = width)
+    if cases.ndim == 2 and mat.ndim == 3:
+        cases_shuf = cases.dimshuffle((1, 0))
+        mat_shuf = mat.dimshuffle((2, 0, 1))
+        delayed_arr = tt.batched_dot(cases_shuf, mat_shuf)
+        delayed_arr = delayed_arr.dimshuffle((1, 0))
+    elif array.ndim == 1 and mat.ndim == 2:
+        delayed_arr = tt.dot(cases, mat)
+    return delayed_arr
+        
+def delay_sim_cases(new_I, lenI, len_out, delay, delay_diff):
+    delay_mat= delay_matrix(lenI, len_out, delay_diff)
+    infered_cases = interpolate(new_I, delay, delay_mat)
+    return infered_cases
+    
+  
+def interpolate(array, delay, delay_matrix):
+    interp_matrix = tt.maximum(1 - tt.abs_(delay_matrix - delay), 0)
+    interpolation = tt.dot(array, interp_matrix)
+    return interpolation
