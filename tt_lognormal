@@ -1,0 +1,6 @@
+def tt_lognormal(x, mu, sigma):
+    x = tt.clip(x,1e-12,1e12)
+    sigma = tt.clip(sigma, 1e-12, 1e12)
+    mu = tt.clip(mu, 1e-12, 1e12)
+    distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
+    return distr / (tt.sum(distr, axis=0) + 1e-12)
