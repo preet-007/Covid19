@@ -1,0 +1,104 @@
+def SPEQIR(
+    logb, ro, gamma, prior_I, prior_E=50, prior_gamma = 1/8, prior_incubation= 5,
+    prior_s_incubation= 2, sigma_incubation=0.4, pr_sigma_gamma=0.2):
+    
+    #Population
+    N = 17134873
+    model = modelcontext(model)
+
+    #Prior Exposed
+    if isinstance(prior_E, tt.Variable):
+        Exposed = prior_E
+    else:
+        Exposed = pm.HalfCauchy(
+            beta=prior_E, shape=(16, model.shape_of_regions)
+        )
+        
+ 
+    # Prior Infectious
+    if isinstance(prior_I, tt.Variable):
+        Incubated = prior_I
+    else:
+        Incubated = pm.HalfCauchy(
+            beta= prior_I, shape=model.shape_of_regions
+        )
+
+    S = N - Incubated - pm.math.sum(Exposed, axis=0) 
+
+    lambda_t = tt.exp(logb)
+    new_I = tt.zeros_like(Incubated)
+
+    if pr_s_incubation is None:
+        median_incubation = pr_incubation
+    else:
+        median_incubation = pm.Normal(
+            mu=pr_incubation,
+            sigma=pr_s_incubation,
+        )
+    
+    
+
+    # Choose transition rates (E to I) according to incubation period distribution
+    
+    x = np.arange(1, 16)[:, None]
+
+
+    ro = tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+
+    # Runs SEIR model:
+    def next_day(
+        lambda_t, St, n1, n2, n3, n4,n5, n6, n7,n8, n9, n10, n11, It, _, gamma,ro, N
+    ):
+        new_E_t = lambda_t / N * I_t * S_t
+        S_t = S_t - new_E_t
+        new_I_t = (
+            ro[0] * nE1
+            + ro[1] * nE2
+            + ro[2] * nE3
+            + ro[3] * nE4
+            + ro[4] * nE5
+            + ro[5] * nE6
+            + ro[6] * nE7
+            + ro[7] * nE8
+            + ro[8] * nE9
+            + ro[9] * nE10
+            + ro[10]* ne11
+            + ro[11] * nE12
+            + ro[12] * nE13
+            + ro[13] * nE14
+            + ro[14] * nE15
+            + ro[15]* ne16
+            
+        )
+        I_t = I_t + new_I_t - (gamma)* I_t
+        I_t = tt.clip(I_t, -1, N - 1)  # for stability
+        S_t = tt.clip(S_t, -1, N)
+        return S_t, new_E_t, I_t, new_I_t
+
+    outputs, _ = theano.scan(
+        fn=next_day,
+        sequences=[lambda_t],
+        outputs_info=[
+            S_begin,
+            dict( taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10,-11,-12,-13,-14,-15]),
+            I_begin,
+            new_I,
+        ],
+        non_sequences=[gamma, ro, N],
+    )
+    S_t, new_E_t, I_t, new_I_t = outputs
+    pm.Deterministic(name_new_I_t, new_I_t)
+
+    if name_S_t is not None:
+        pm.Deterministic(name_S_t, S_t)
+    if name_I_t is not None:
+        pm.Deterministic(name_I_t, I_t)
+    if name_new_E_t is not None:
+        pm.Deterministic(name_new_E_t, new_E_t)
+
+    if return_all:
+        return new_I_t, new_E_t, I_t, S_t
+    else:
+        return new_I_t
+
+
