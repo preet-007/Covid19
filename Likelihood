@@ -1,0 +1,25 @@
+def student_t_likelihood(
+    cases,
+    pr_beta_sigma_obs=30,
+    nu=4,
+    offset_sigma=1,
+    model=None,
+    data_obs=None,
+):
+    model = modelcontext(model)
+
+    if data_obs is None:
+        data_obs = model.new_cases_obs
+
+    sigma_obs = pm.HalfCauchy(
+        beta=pr_beta_sigma_obs, shape=model.shape_of_regions
+    )
+
+    pm.StudentT(
+        nu=nu,
+        mu=cases[:model.data_len],
+        sigma=tt.abs_(cases[:model.data_len] + offset_sigma) ** 0.5
+        * sigma_obs,  # offset and tt.abs to avoid nans
+        observed=data_obs,
+    )
+    
