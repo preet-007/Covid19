@@ -1,0 +1,45 @@
+import datetime
+import logging
+
+import numpy as np
+from pymc3 import Model  
+
+class Covid19(Model):
+    from datetime import date
+    data_begin = None
+    data_end = None
+    
+    def __init__(self, cases,diff_len, population, model = None):
+        super().__init__(model=model)
+        self.cases = np.array(cases)
+        self.sim_dim = cases.ndim
+        self.population = population
+        sim_len = len(cases) + diff_len
+        if self.sim_dim == 1:
+            self.sim_shape = (sim_len,)
+        elif self.sim_dim == 2:
+            self.sim_shape = (sim_len, self.cases.shape[1])
+       
+        
+    @property
+    def is_hierarchical(self):
+        return self.cases.ndim ==2
+    
+    @property
+    def data_dim(self):
+        return self.cases.shape[1]
+    
+    
+    @property
+    def sim_len(self):
+        return self.sim_len
+    
+
+    @property
+    def diff_data(self):
+        return diff_len
+    
+def modelcontext(model):
+    if model is None:
+        return Covid19.get_context()
+    return model
